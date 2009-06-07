@@ -1,5 +1,8 @@
 require 'drb/drb'
 require 'rbconfig'
+require 'spork/forker.rb'
+require 'spork/custom_io_streams.rb'
+require 'spork/app_framework.rb'
 
 # This is based off of spec_server.rb from rspec-rails (David Chelimsky), which was based on Florian Weber's TDDMate
 class Spork::Server
@@ -7,6 +10,8 @@ class Spork::Server
   
   LOAD_PREFERENCE = ['RSpec', 'Cucumber']
   BOOTSTRAP_FILE = File.dirname(__FILE__) + "/../../assets/bootstrap.rb"
+  
+  include Spork::CustomIOStreams
   
   def self.port
     raise NotImplemented
@@ -44,20 +49,16 @@ class Spork::Server
     LOAD_PREFERENCE.index(server_name) || LOAD_PREFERENCE.length
   end
   
-  def self.using_rails?
-    File.exist?("config/environment.rb")
-  end
-  
   def self.bootstrapped?
     File.read(helper_file).include?("Spork.prefork")
   end
   
   def self.bootstrap
     if bootstrapped?
-      puts "Already bootstrapped!"
+      stderr.puts "Already bootstrapped!"
       return
     end
-    puts "Bootstrapping #{helper_file}."
+    stderr.puts "Bootstrapping #{helper_file}."
     contents = File.read(helper_file)
     bootstrap_code = File.read(BOOTSTRAP_FILE)
     File.open(helper_file, "wb") do |f|
@@ -65,7 +66,7 @@ class Spork::Server
       f.puts contents
     end
     
-    puts "Done. Edit #{helper_file} now with your favorite text editor and follow the instructions."
+    stderr.puts "Done. Edit #{helper_file} now with your favorite text editor and follow the instructions."
     true
   end
   
@@ -79,7 +80,8 @@ class Spork::Server
     trap("SIGTERM") { abort; exit!(0) }
     trap("USR2") { abort; restart } if Signal.list.has_key?("USR2")
     DRb.start_service("druby://127.0.0.1:#{port}", self)
-    puts "Spork is ready and listening on #{port}!"
+    stderr.puts "Spork is ready and listening on #{port}!"
+    stderr.flush
     DRb.thread.join
   end
   
@@ -93,36 +95,44 @@ class Spork::Server
   
   def run(argv, stderr, stdout)
     return false if running?
-    $stdout = stdout
-    $stderr = stderr
-    @child_pid = Kernel.fork do
-      Spork.exec_each_run(helper_file)
+    
+    @child = ::Spork::Forker.new do
+      $stdout, $stderr = stdout, stderr
+      Spork.exec_each_run { load helper_file }
       run_tests(argv, stderr, stdout)
     end
-    Process.wait(@child_pid)
-    @child_pid = nil
-    true
+    @child.result
   end
   
   def running?
-    !! @child_pid
+    @child && @child.running?
   end
   
   private
+    def self.framework
+      @framework ||= Spork::AppFramework.detect_framework
+    end
+    
     def self.preload
-      if bootstrapped?
-        puts "Loading Spork.prefork block..."
-        Spork.exec_prefork(helper_file)
-      else
-        puts "#{helper_file} has not been sporked.  Run spork --bootstrap to do so."
-        # are we in a rails app?
-        if using_rails?
-          puts "Preloading Rails environment"
-          require "config/environment.rb"
-        else
-          puts "There's nothing I can really do for you.  Bailing."
-          return false
+      Spork.exec_prefork do
+        unless bootstrapped?
+          stderr.puts "#{helper_file} has not been bootstrapped.  Run spork --bootstrap to do so."
+          stderr.flush
+        
+          if framework.bootstrap_required?
+            stderr.puts "I can't do anything for you by default for the framework your using: #{framework.short_name}.\nYou must bootstrap #{helper_file} to continue."
+            stderr.flush
+            return false
+          end
         end
+      
+        framework.preload do
+          if bootstrapped?
+            stderr.puts "Loading Spork.prefork block..."
+            stderr.flush
+            load(helper_file)
+          end
+        end  
       end
       true
     end
@@ -132,7 +142,8 @@ class Spork::Server
     end
     
     def restart
-      puts "restarting"
+      stderr.puts "restarting"
+      stderr.flush
       config       = ::Config::CONFIG
       ruby         = File::join(config['bindir'], config['ruby_install_name']) + config['EXEEXT']
       command_line = [ruby, $0, ARGV].flatten.join(' ')
@@ -140,16 +151,14 @@ class Spork::Server
     end
     
     def abort
-      if running?
-        Process.kill(Signal.list['TERM'], @child_pid)
-        true
-      end
+      @child && @child.abort
     end
     
     def sig_int_received
       if running?
         abort
-        puts "Running specs stopped.  Press CTRL-C again to stop the server."
+        stderr.puts "Running tests stopped.  Press CTRL-C again to stop the server."
+        stderr.flush
       else
         exit!(0)
       end

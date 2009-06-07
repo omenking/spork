@@ -1,3 +1,33 @@
+== 0.5.1 2009-06-05
+
+ === Bugfixes
+
+ * "Trapped" ApplicationController loading wasn't working in Rails 2.1.0.
+ * Rails 2.0.2 blew up.
+ * Rails 2.3.2, 2.2.2, 2.1.2, 2.1.1, 2.1.0, 2.0.2 are all verified and tested (rake test_rails tests all 2.x rails gems you've installed)
+
+== 0.5.0 2009-06-05
+
+ === New Features
+
+ * Diagnostic mode: run 'spork -d' to find out which project files will be preloaded, and where they are being loading from.
+ * Better Rails integration: automatically delay loading of ApplicationController, observers, and entire app folder.  Also, automatically re-establish the database connection each run if ActiveRecord is being used.
+ * Cucumber feature to test Spork from end to end (integrating with Rails)
+
+== 0.4.4 2009-06-01
+
+ === New Features
+ 
+  * Return the result of run_tests by shipping it through a Unix socket pair
+
+ === Bugfixes
+ 
+  * Prevent at_exit blocks from being run inside the child (fixes the duplicate run attempts bug)
+
+== 0.4.3 2009-05-30
+
+  * Actually include MIT-License in the gem
+
 == 0.4.2 2009-05-30
 
   * MIT-License

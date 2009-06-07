@@ -19,6 +19,7 @@ module Spork
       
       opt.separator "Options:"
       opt.on("-b", "--bootstrap")  {|ignore| @options[:bootstrap] = true }
+      opt.on("-d", "--diagnose")  {|ignore| @options[:diagnose] = true }
       opt.on("-h", "--help")  {|ignore| @options[:help] = true }
       non_option_args = args.select { |arg| ! args[0].match(/^-/) }
       @options[:server_matcher] = non_option_args[0]
@@ -45,7 +46,7 @@ module Spork
       if options[:server_matcher]
         @server = Spork::Server.supported_servers(options[:server_matcher]).first
         unless @server
-          @output.puts <<-ERROR
+          @error.puts <<-ERROR
 #{options[:server_matcher].inspect} didn't match a supported test framework.
 
 #{supported_servers_text}
@@ -54,7 +55,7 @@ module Spork
         end
         
         unless @server.available?
-          @output.puts  <<-USEFUL_ERROR
+          @error.puts  <<-USEFUL_ERROR
 I can't find the helper file #{@server.helper_file} for the #{@server.server_name} testing framework.
 Are you running me from the project directory?
           USEFUL_ERROR
@@ -63,7 +64,7 @@ Are you running me from the project directory?
       else
         @server = Spork::Server.available_servers.first
         if @server.nil?
-          @output.puts  <<-USEFUL_ERROR
+          @error.puts  <<-USEFUL_ERROR
 I can't find any testing frameworks to use.
 Are you running me from a project directory?
           USEFUL_ERROR
@@ -76,12 +77,26 @@ Are you running me from a project directory?
     def run
       return false unless find_server
       ENV["DRB"] = 'true'
-      ENV["RAILS_ENV"] ||= 'test' if server.using_rails?
-      @output.puts "Using #{server.server_name}"
-      return server.bootstrap if options[:bootstrap]
-      return(false) unless server.preload
-      server.run
-      return true
+      @error.puts "Using #{server.server_name}"
+      @error.flush
+      case
+      when options[:bootstrap]
+        server.bootstrap
+      when options[:diagnose]
+        require 'spork/diagnoser'
+        
+        Spork::Diagnoser.install_hook!
+        server.preload
+        Spork::Diagnoser.output_results(@output)
+        return true
+      else
+        return(false) unless server.preload
+        server.run
+        return true
+      end
+    end
+    
+    def diagnose
     end
 
     private

@@ -7,12 +7,12 @@ begin
     s.name = %q{spork}
     s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
     s.authors = ["Tim Harper"]
-    s.date = %q{2009-05-20}
+    s.date = Date.today.to_s
     s.description = %q{A forking Drb spec server}
     s.email = ["timcharper+spork@gmail.com"]
     s.executables = ["spork"]
     s.extra_rdoc_files = ["README.rdoc", "MIT-LICENSE"]
-    s.files = ["README.rdoc", "MIT-LICENSE"] + Dir["lib/**/*"] + Dir["assets/**/*"] + Dir["spec/**/*"]
+    s.files = ["README.rdoc", "MIT-LICENSE"] + Dir["lib/**/*"] + Dir["assets/**/*"] + Dir["spec/**/*"] + Dir["features/**/*"]
     s.has_rdoc = true
     s.homepage = %q{http://github.com/timcharper/spork}
     s.rdoc_options = ["--main", "README.rdoc"]
@@ -93,3 +93,15 @@ rescue LoadError
   puts "Rake SshDirPublisher is unavailable or your rubyforge environment is not configured."
 end
 
+task :test_rails do
+  rails_gems = `gem list rails`.grep(/^rails\b/).first
+  versions = rails_gems.scan(/\((.+)\)/).flatten.first.split(", ")
+  versions_2_0 = versions.grep(/^2/)
+  versions_2_0.each do |version|
+    puts "Testing version #{version}"
+    pid = Kernel.fork do
+      exec("env RAILS_VERSION=#{version} cucumber features/rails_integration.feature")
+    end
+    Process.waitpid(pid)
+  end
+end

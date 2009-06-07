@@ -1,7 +1,11 @@
 require File.dirname(__FILE__) + '/../spec_helper'
 
+
 class FakeServer < Spork::Server
   attr_accessor :wait_time
+  
+  include Spork::TestIOStreams
+  
   def self.helper_file
     SPEC_TMP_DIR + "/fake/test_helper.rb"
   end
@@ -10,16 +14,9 @@ class FakeServer < Spork::Server
     1000
   end
   
-  def self.puts(string)
-    $test_stdout.puts(string)
-  end
-  
-  def puts(string)
-    $test_stdout.puts(string)
-  end
-  
   def run_tests(argv, input, output)
     sleep(@wait_time || 0.5)
+    true
   end
 end
 
@@ -57,8 +54,7 @@ describe Spork::Server do
   
   describe "a fake server" do
     def create_helper_file
-      FileUtils.mkdir_p(File.dirname(FakeServer.helper_file))
-      FileUtils.touch(FakeServer.helper_file)
+      create_file(FakeServer.helper_file, "# stub spec helper file")
     end
   
     before(:each) do
@@ -93,9 +89,9 @@ describe Spork::Server do
       create_helper_file
       FakeServer.bootstrap
     
-      $test_stdout.string.should include("Bootstrapping")
-      $test_stdout.string.should include("Edit")
-      $test_stdout.string.should include("favorite text editor")
+      $test_stderr.string.should include("Bootstrapping")
+      $test_stderr.string.should include("Edit")
+      $test_stderr.string.should include("favorite text editor")
     
       File.read(FakeServer.helper_file).should include(File.read(FakeServer::BOOTSTRAP_FILE))
     end
@@ -119,8 +115,14 @@ describe Spork::Server do
       sleep(0.05)
       @fake.send(:abort)
       sleep(0.01) while @fake.running?
-    
+      
       (Time.now - started_at).should < @fake.wait_time
+    end
+    
+    it "returns the result of the run_tests method from the forked child" do
+      create_helper_file
+      @fake.stub!(:run_tests).and_return("tests were ran")
+      @fake.run("test", STDOUT, STDIN).should == "tests were ran"
     end
   end
 end
