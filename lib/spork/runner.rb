@@ -2,6 +2,7 @@ require 'optparse'
 require 'spork/server'
 
 module Spork
+  # This is used by bin/spork. It's wrapped in a class because it's easier to test that way.
   class Runner
     attr_reader :server
     
@@ -21,6 +22,7 @@ module Spork
       opt.on("-b", "--bootstrap")  {|ignore| @options[:bootstrap] = true }
       opt.on("-d", "--diagnose")  {|ignore| @options[:diagnose] = true }
       opt.on("-h", "--help")  {|ignore| @options[:help] = true }
+      opt.on("-p", "--port [PORT]") {|port| @options[:port] = port }
       non_option_args = args.select { |arg| ! args[0].match(/^-/) }
       @options[:server_matcher] = non_option_args[0]
       opt.parse!(args)
@@ -42,6 +44,7 @@ module Spork
       text.string
     end
     
+    # Returns a server for the specified (or the detected default) testing framework.  Returns nil if none detected, or if the specified is not supported or available.
     def find_server
       if options[:server_matcher]
         @server = Spork::Server.supported_servers(options[:server_matcher]).first
@@ -79,13 +82,16 @@ Are you running me from a project directory?
       ENV["DRB"] = 'true'
       @error.puts "Using #{server.server_name}"
       @error.flush
+
+      server.port = options[:port]
+
       case
       when options[:bootstrap]
         server.bootstrap
       when options[:diagnose]
         require 'spork/diagnoser'
         
-        Spork::Diagnoser.install_hook!
+        Spork::Diagnoser.install_hook!(server.entry_point)
         server.preload
         Spork::Diagnoser.output_results(@output)
         return true
@@ -96,9 +102,6 @@ Are you running me from a project directory?
       end
     end
     
-    def diagnose
-    end
-
     private
     attr_reader :options 
 

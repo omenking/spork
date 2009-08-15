@@ -12,6 +12,10 @@ Given /^a file named "([^\"]*)" with:$/ do |file_name, file_content|
   create_file(file_name, file_content)
 end
 
+When /^the contents of "([^\"]*)" are changed to:$/ do |file_name, file_content|
+  create_file(file_name, file_content)
+end
+
 # the following code appears in "config/environment.rb" after /Rails::Initializer.run/:
 Given /^the following code appears in "([^\"]*)" after \/([^\\\/]*)\/:$/ do |file_name, regex, content|
   # require 'ruby-debug'; Debugger.start; Debugger.start_control; debugger
@@ -21,7 +25,6 @@ Given /^the following code appears in "([^\"]*)" after \/([^\\\/]*)\/:$/ do |fil
     content_lines = File.read(file_name).split("\n")
     0.upto(content_lines.length - 1) do |line_index|
       if regex.match(content_lines[line_index])
-        puts "found: #{content_lines[line_index]}"
         content_lines.insert(line_index + 1, content)
         break
       end
@@ -30,17 +33,20 @@ Given /^the following code appears in "([^\"]*)" after \/([^\\\/]*)\/:$/ do |fil
   end
 end
 
-When /^I run (spork|spec)($| .*$)/ do |command, spork_opts|
-  if command == 'spork'
+When /^I run (spork|spec|cucumber)($| .*$)/ do |command, spork_opts|
+  case command
+  when 'spork'
     command = SporkWorld::BINARY
+  when 'cucumber'
+    command = Cucumber::BINARY
   else
     command = %x{which #{command}}.chomp
   end
-  run "#{SporkWorld::RUBY_BINARY} #{command} #{spork_opts}"
+  run "#{SporkWorld::RUBY_BINARY} -I #{Cucumber::LIBDIR} #{command} #{spork_opts}"
 end
 
 When /^I fire up a spork instance with "spork(.*)"$/ do |spork_opts|
-  run_in_background "#{SporkWorld::RUBY_BINARY} #{SporkWorld::BINARY} #{spork_opts}"
+  run_in_background "#{SporkWorld::RUBY_BINARY} -I #{Cucumber::LIBDIR} #{SporkWorld::BINARY} #{spork_opts}"
   output = ""
   begin
     status = Timeout::timeout(15) do
@@ -57,22 +63,36 @@ When /^I fire up a spork instance with "spork(.*)"$/ do |spork_opts|
   end
 end
 
-Then /^the output should contain$/ do |text|
-  last_stdout.should include(text)
+Then /the file "([^\"]*)" should include "([^\"]*)"/ do |filename, content|
+  in_current_dir do
+    File.read(filename).should include(content)
+  end
 end
 
-Then /^the output should contain "(.+)"$/ do |text|
-  last_stdout.should include(text)
+Then /^the (error output|output) should contain$/ do |which, text|
+  (which == "error output" ? last_stderr : last_stdout).should include(text)
 end
 
-Then /^the output should not contain$/ do |text|
-  last_stdout.should_not include(text)
+Then /^the (error output|output) should contain "(.+)"$/ do |which, text|
+  (which == "error output" ? last_stderr : last_stdout).should include(text)
 end
 
-Then /^the output should not contain "(.+)"$/ do |text|
-  last_stdout.should_not include(text)
+Then /^the (error output|output) should match \/(.+)\/$/ do |which, regex|
+  (which == "error output" ? last_stderr : last_stdout).should match(Regexp.new(regex))
 end
 
-Then /^the output should be$/ do |text|
-  last_stdout.should == text
+Then /^the (error output|output) should not contain$/ do |which, text|
+  (which == "error output" ? last_stderr : last_stdout).should_not include(text)
+end
+
+Then /^the (error output|output) should not contain "(.+)"$/ do |which, text|
+  (which == "error output" ? last_stderr : last_stdout).should_not include(text)
+end
+
+Then /^the (error output|output) should be empty$/ do |which|
+  (which == "error output" ? last_stderr : last_stdout).should == ""
+end
+
+Then /^the (error output|output) should be$/ do |which, text|
+  (which == "error output" ? last_stderr : last_stdout).should == text
 end

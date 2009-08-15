@@ -1,3 +1,57 @@
+== 0.5.9 (In Git)
+
+=== Bugfixes
+
+* bugfix: More fixes for Cucumber 0.4.
+
+== 0.5.8 2009-08-13
+
+ === Bugfixes
+ 
+ * bugfix: Add compatibility for Cucumber 0.4.
+
+== 0.5.7 2009-06-17
+
+ === Bugfixes
+ 
+ * bugfix: Spork was allowing view eager-loading to happen during prefork in Rails 2.2.x, 2.3.x
+
+== 0.5.6 2009-06-10
+
+ === Bugfixes
+ 
+ * bugfix: cucumber was logging to log/test.log, even though RAILS_ENV 'features' was specified
+
+== 0.5.5 2009-06-10
+
+ === Bugfixes
+ 
+ * Rather than failing silently, Spork aborts the current running test process when a new run request is sent.
+
+== 0.5.4 2009-06-08
+
+ === Bugfixes
+ 
+ * ApplicationHelper delayed loading was causing methods from Rails ApplicationHelper included modules weren't being registered in controller specs.  Fixed.
+
+== 0.5.3 2009-06-08
+
+ === Bugfixes
+ 
+ * Spork.expanded_caller was flawed, and was causing a very strange regression fix where Spork.each_run block wouldn't load if it happened to occur on line 65.
+
+== 0.5.2 2009-06-08
+
+ === New Features
+ 
+ * Cleaner backtrace in diagnostic mode
+ 
+ === Bugfixes
+ 
+ * Cucumber env.rb (and RSpec spec_helper.rb) are now able to set the environment via ENV['RAILS_ENV'] if they wish.
+ * Rails config/routes.rb is no longer cached
+ * Unknown application frameworks no longer blow up if not spork bootstrapped
+
 == 0.5.1 2009-06-05
 
  === Bugfixes
@@ -49,3 +103,4 @@
 
 == 0.3.0 2009-05
   * Initial release with SpecServer, Bootstraper, and basic option parsing. (Tim Harper)
+

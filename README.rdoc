@@ -1,16 +1,35 @@
 = Spork
 
-* http://github.com/timcharper/spork
+* Repository: http://github.com/timcharper/spork
+* Issues: http://github.com/timcharper/spork/issues
+* Changes: http://github.com/timcharper/spork/blob/master/History.txt
+* Mailing list: http://groups.google.com/group/sporkgem
+* Wiki: http://wiki.github.com/timcharper/spork
 
 == SYNOPSIS:
 
-Spork is Tim Harper's implementation of a Drb spec server (similar to the script/spec_server provided by rspec-rails), except rather than using the Rails constant unloading to reload your files, it forks a copy of the server each time you run your specs.  The result?  Spork runs more solid: it doesn't get corrupted over time, and it properly handles modules and any voo-doo meta programming you may have put in your app.
+Spork is Tim Harper's implementation of test server (similar to the script/spec_server provided by rspec-rails), except rather than using the Rails constant unloading to reload your files, it forks a copy of the server each time you run your tests.  The result?  Spork runs more solid: it doesn't get corrupted over time, and it properly handles modules and any voo-doo meta programming you may have put in your app.
 
 Because Spork uses Kernel.fork, it only works on POSIX systems.  This means Windows users are not invited to this party.  Sorry :(
 
+== Supported Testing Frameworks
+
+* Rspec
+* Cucumber
+
+And more to come!  Vote for your favorite at http://github.com/timcharper/spork/issues
+
+== Supported Application Frameworks
+
+Actually, Spork ~can~ work with any application framework.  But, it ships with hooks and helpers to help make the experience much more "out of the box"
+
+* Rails
+
+More can be added!  Vote for your favorite at http://github.com/timcharper/spork/issues
+
 == INSTALL:
 
-  [sudo] gem install timcharper-spork --source http://gems.github.com/
+  [sudo] gem install spork
 
 alternatively:
 
@@ -70,27 +89,7 @@ Use this as a guideline when "Sporking" your features/support/env.rb file
 
 == Some potential issues and ways to overcome them:
 
-=== Database connections don't work inside of Spork
-
-If you're using ActiveRecord and Rails, Spork will automatically reconnect to the database.  However, if you're not using ActiveRecord, or if you're doing some tricky stuff with connections, you'll have to make sure your connections get re-established on each run.  In your spec/spec_helper.rb file:
-
-  Spork.each_run do
-    # Do your connection re-establishing here
-  end
-
-=== Couldn't find formatter class Spec::Runner::Formatter::TextMateFormatter
-
-  Make sure the --require option is specified *before* --format
-
-On one of our projects, many of us using TextMate with spork, only one developer got this error message while the rest of us ran just fine.  I don't know exactly why it happened, but requiring the textmate formatter in the prefork block made it go away, like this:
-
-  Spork.prefork do
-    gem "rspec", "= 1.2.6"
-    require 'spec'
-    ...
-    require 'spec/runner/formatter/text_mate_formatter'
-    ...
-  end
+See http://wiki.github.com/timcharper/spork/troubleshooting
 
 == Kudos to
 

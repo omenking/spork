@@ -1,11 +1,26 @@
+# The Diagnoser hooks into load and require and keeps track of when files are required / loaded, and who loaded them.
+# It's used when you run spork --diagnose
+#
+# = Example
+#  
+#  Spork::Diagnoser.install_hook!('/path/env.rb', '/path')
+#  require '/path/to/env.rb'
+#  Spork::Diagnoser.output_results(STDOUT)
 class Spork::Diagnoser
   class << self
     def loaded_files
       @loaded_files ||= {}
     end
     
-    def install_hook!(dir = Dir.pwd)
+    # Installs the diagnoser hook into Kernel#require and Kernel#load
+    #
+    # == Parameters
+    #
+    # * +entry_file+ - The file that is used to load the project.  Used to filter the backtrace so anything that happens after it is hidden.
+    # * +dir+ - The project directory.  Any file loaded outside of this directory will not be logged.
+    def install_hook!(entry_file = nil, dir = Dir.pwd)
       @dir = File.expand_path(Dir.pwd, dir)
+      @entry_file = entry_file
       
       Kernel.class_eval do
         alias :require_without_diagnoser :require
@@ -26,23 +41,10 @@ class Spork::Diagnoser
     def add_included_file(filename, callstack)
       filename = expand_filename(filename)
       return unless File.exist?(filename)
-      loaded_files[filename] = caller.select { |f| ! f.include?('lib/spork/diagnoser.rb')} if subdirectory?(filename)
+      loaded_files[filename] = filter_callstack(caller) if subdirectory?(filename)
     end
     
-    def expand_filename(filename)
-      ([Dir.pwd] + $:).each do |attempted_path|
-        attempted_filename = File.expand_path(filename, attempted_path)
-        return attempted_filename if File.file?(attempted_filename)
-        attempted_filename = attempted_filename + ".rb"
-        return attempted_filename if File.file?(attempted_filename)
-      end
-      filename
-    end
-    
-    def subdirectory?(directory)
-      File.expand_path(directory, Dir.pwd).include?(@dir)
-    end
-    
+    # Uninstall the hook. Generally useful only for testing the Diagnoser.
     def remove_hook!
       return unless Kernel.private_instance_methods.include?('require_without_diagnoser')
       Kernel.class_eval do
@@ -55,6 +57,11 @@ class Spork::Diagnoser
       true
     end
     
+    # output the results of a diagnostic run.
+    #
+    # == Parameters
+    #
+    # * +stdout+ - An IO stream to output the results to.
     def output_results(stdout)
       project_prefix = Dir.pwd + "/"
       minimify = lambda { |f| f.gsub(project_prefix, '')}
@@ -68,5 +75,29 @@ class Spork::Diagnoser
         stdout.puts loaded_files[file].map(&minimify)
       end
     end
+    
+    private
+      def filter_callstack(callstack, entry_file = @entry_file)
+        callstack.pop until callstack.empty? || callstack.last.include?(@entry_file) if @entry_file
+        callstack.map do |line|
+          next if line.include?('lib/spork/diagnoser.rb')
+          line.gsub!('require_without_diagnoser', 'require')
+          line
+        end.compact
+      end
+    
+      def expand_filename(filename)
+        ([Dir.pwd] + $:).each do |attempted_path|
+          attempted_filename = File.expand_path(filename, attempted_path)
+          return attempted_filename if File.file?(attempted_filename)
+          attempted_filename = attempted_filename + ".rb"
+          return attempted_filename if File.file?(attempted_filename)
+        end
+        filename
+      end
+    
+      def subdirectory?(directory)
+        File.expand_path(directory, Dir.pwd).include?(@dir)
+      end
   end
 end
