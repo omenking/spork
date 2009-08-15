@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Tim Harper"]
-  s.date = %q{2009-08-13}
+  s.date = %q{2009-08-15}
   s.default_executable = %q{spork}
   s.description = %q{A forking Drb spec server}
   s.email = ["timcharper+spork@gmail.com"]
@@ -48,6 +48,7 @@ Gem::Specification.new do |s|
      "spec/spork/diagnoser_spec.rb",
      "spec/spork/forker_spec.rb",
      "spec/spork/runner_spec.rb",
+     "spec/spork/server/cucumber_spec.rb",
      "spec/spork/server/rspec_spec.rb",
      "spec/spork/server_spec.rb",
      "spec/spork_spec.rb"
@@ -56,7 +57,7 @@ Gem::Specification.new do |s|
   s.rdoc_options = ["--main", "README.rdoc"]
   s.require_paths = ["lib"]
   s.rubyforge_project = %q{spork}
-  s.rubygems_version = %q{1.3.4}
+  s.rubygems_version = %q{1.3.3}
   s.summary = %q{spork}
   s.test_files = [
     "spec/spec_helper.rb",
@@ -66,6 +67,7 @@ Gem::Specification.new do |s|
      "spec/spork/diagnoser_spec.rb",
      "spec/spork/forker_spec.rb",
      "spec/spork/runner_spec.rb",
+     "spec/spork/server/cucumber_spec.rb",
      "spec/spork/server/rspec_spec.rb",
      "spec/spork/server_spec.rb",
      "spec/spork_spec.rb"
